@@ -1,0 +1,83 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <driver/gpio.h>
+#include "esp_err.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#define LED_PIN GPIO_NUM_21
+
+#define TASK_1_NAME       "task 1"
+#define TASK_1_STACK_SIZE (configMINIMAL_STACK_SIZE * 4)
+#define TASK_1_PRIORITY   (tskIDLE_PRIORITY + 1)
+
+#define TASK_2_NAME       "task 2"
+#define TASK_2_STACK_SIZE (configMINIMAL_STACK_SIZE * 4)
+#define TASK_2_PRIORITY   (tskIDLE_PRIORITY + 2)
+
+// Variável compartilhada entre as tarefas
+float temperatura = 25.0;
+
+// Função para calcular a temperatura em Fahrenheit
+float celsius_para_fahrenheit(float celsius) {
+    return (celsius * 9.0 / 5.0) + 32;
+}
+
+// Declaração das funções
+static void task_1(void *arg);
+static void task_2(void *arg);
+
+// Declaração dos handles
+static TaskHandle_t xtask_handle_1 = NULL;
+static TaskHandle_t xtask_handle_2 = NULL;
+
+void app_main(void)
+{
+    BaseType_t xReturn = pdPASS;
+
+    xReturn = xTaskCreate(&task_1,
+                          TASK_1_NAME,
+                          TASK_1_STACK_SIZE,
+                          NULL,
+                          TASK_1_PRIORITY,
+                          &xtask_handle_1);
+
+    if (xReturn != pdPASS || xtask_handle_1 == NULL) {
+        printf("Erro ao criar a task 1\n");
+    }
+
+    xReturn = xTaskCreate(&task_2,
+                          TASK_2_NAME,
+                          TASK_2_STACK_SIZE,
+                          NULL,
+                          TASK_2_PRIORITY,
+                          &xtask_handle_2);
+
+    if (xReturn != pdPASS || xtask_handle_2 == NULL) {
+        printf("Erro ao criar a task 2\n");
+    }
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
+
+static void task_1(void *arg)
+{
+
+    while (true) {
+        temperatura += 1.5;
+        printf("Temperatura em Celsius: %.2f°C\n", temperatura);
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Espera 1 segundo, frequência de 1 Hz
+    }
+}
+
+static void task_2(void *arg)
+{
+    while (true) {
+        float temperatura_fahrenheit = celsius_para_fahrenheit(temperatura);
+        printf("Temperatura em Fahrenheit: %.2f°F\n", temperatura_fahrenheit);
+        vTaskDelay(pdMS_TO_TICKS(500)); // Espera 0.5 segundo, frequência de 2 Hz
+    }
+}
